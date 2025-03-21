@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Игра в кальмара: Вырезание печенки</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(to right, #2c3e50, #34495e);
+            color: white;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .game-container {
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 400px;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: #f39c12;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        canvas {
+            border: 2px solid #333;
+            display: block;
+            margin: 0 auto;
+            background-color: #e2e2e2;
+        }
+
+        button {
+            background-color: #44c767;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #5cbf2a;
+        }
+
+        .blocked-message {
+            margin-top: 20px;
+            color: #f44336;
+            font-size: 18px;
+        }
+
+        .input-container {
+            margin-top: 20px;
+        }
+
+        input {
+            padding: 10px;
+            font-size: 16px;
+            margin-top: 10px;
+            border-radius: 5px;
+            width: 100%;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>Игра в кальмара: Вырезание печенки</h1>
+
+        <div id="game">
+            <h2>Аккуратно вырежьте печеньку!</h2>
+            <canvas id="cookieGame"></canvas>
+            <button onclick="startGame()">Начать игру</button>
+        </div>
+
+        <div id="blocked" class="blocked-message" style="display: none;">
+            <p>Вы проиграли! Доступ к сайту заблокирован.</p>
+            <p>Введите код для восстановления доступа:</p>
+            <div class="input-container">
+                <input type="text" id="codeInput" placeholder="Введите код" />
+                <button onclick="checkCode()">Отправить</button>
+            </div>
+        </div>
+
+        <div id="congratulations" class="blocked-message" style="display: none;">
+            <p>Поздравляем, вы успешно прошли игру!</p>
+            <p>Приватный код: <strong>2914</strong></p>
+            <p>Используйте его для других сайтов разработчика.</p>
+        </div>
+    </div>
+
+    <script>
+        // Проверка, был ли игрок заблокирован
+        if (localStorage.getItem('blocked') === 'true') {
+            document.getElementById('game').style.display = 'none';
+            document.getElementById('blocked').style.display = 'block';
+        }
+
+        // Элементы игры
+        let cookieGameCanvas = document.getElementById('cookieGame');
+        let ctx = cookieGameCanvas.getContext('2d');
+        let cookieShape = { x: 200, y: 200, radius: 150 };
+        let greenLines = []; // Массив для хранения координат линии
+
+        function startGame() {
+            if (localStorage.getItem('blocked') === 'true') return;
+
+            cookieGameCanvas.width = 400;
+            cookieGameCanvas.height = 400;
+
+            // Нарисовать печеньку
+            ctx.clearRect(0, 0, cookieGameCanvas.width, cookieGameCanvas.height);
+            ctx.beginPath();
+            ctx.arc(cookieShape.x, cookieShape.y, cookieShape.radius, 0, Math.PI * 2);
+            ctx.fillStyle = '#F4D03F'; // Жёлтая печенька
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+
+            // Взаимодействие с пользователем: вырезание печеньки
+            cookieGameCanvas.addEventListener('mousedown', function(event) {
+                let mouseX = event.offsetX;
+                let mouseY = event.offsetY;
+
+                // Проверка, находится ли клик за пределами печеньки
+                let distance = Math.sqrt(Math.pow(mouseX - cookieShape.x, 2) + Math.pow(mouseY - cookieShape.y, 2));
+                
+                if (distance > cookieShape.radius - 20 && distance < cookieShape.radius) {
+                    // Добавить точку для зелёной обводки
+                    greenLines.push({ x: mouseX, y: mouseY });
+
+                    // Нарисовать зелёную линию (обводка)
+                    ctx.beginPath();
+                    ctx.arc(cookieShape.x, cookieShape.y, cookieShape.radius, 0, Math.PI * 2);
+                    ctx.lineWidth = 5;
+                    ctx.strokeStyle = '#2ecc71'; // Зелёная обводка
+                    ctx.stroke();
+                    ctx.closePath();
+                    
+                    // Постепенно рисовать зелёную линию
+                    for (let i = 0; i < greenLines.length; i++) {
+                        ctx.beginPath();
+                        ctx.arc(greenLines[i].x, greenLines[i].y, 5, 0, Math.PI * 2);
+                        ctx.fillStyle = '#2ecc71'; // Зелёная линия
+                        ctx.fill();
+                        ctx.closePath();
+                    }
+                } else if (distance > cookieShape.radius) {
+                    // Игрок проиграл, печенька сломалась
+                    alert('Вы проиграли, печенька сломана!');
+                    localStorage.setItem('blocked', 'true'); // Заблокировать доступ
+                    document.location.reload(); // Перезагрузить страницу
+                }
+
+                // Если вырезали всю печеньку
+                if (greenLines.length > 300) {
+                    document.getElementById('game').style.display = 'none';
+                    document.getElementById('congratulations').style.display = 'block';
+                }
+            });
+        }
+
+        // Ввод кода для восстановления доступа
+        function checkCode() {
+            const code = document.getElementById('codeInput').value;
+            if (code === '2914') {
+                localStorage.removeItem('blocked');
+                document.getElementById('game').style.display = 'block';
+                document.getElementById('blocked').style.display = 'none';
+                alert('Вы успешно вернулись в игру!');
+            } else {
+                alert('Неверный код!');
+            }
+        }
+    </script>
+</body>
+</html>
